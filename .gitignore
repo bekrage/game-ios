@@ -1,0 +1,6 @@
+.godot/
+build/
+*.log
+*.p12
+*.mobileprovision
+export_credentials.cfg
