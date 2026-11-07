@@ -50,6 +50,9 @@ jobs:
           Godot --headless --script res://tests/gameplay.gd 2>&1 | tee gameplay-test.log
           grep -q "ALL 53 CHECKS PASSED" gameplay-test.log
           ! grep -E "SCRIPT ERROR|FAIL:" gameplay-test.log
+          Godot --headless --script res://tests/audio.gd 2>&1 | tee audio-test.log
+          grep -q "AUDIO 16 CHECKS PASSED" audio-test.log
+          ! grep -E "SCRIPT ERROR|FAIL:" audio-test.log
       - name: Export Xcode project
         run: |
           mkdir -p build/ios
@@ -68,4 +71,5 @@ jobs:
           path: |
             build/
             gameplay-test.log
+            audio-test.log
           retention-days: 7

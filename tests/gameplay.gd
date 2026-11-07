@@ -100,6 +100,11 @@ func run() -> void:
   game._physics_process(0.016)
   check(game.stage == n + 1, "clear stage %d" % n)
  check(game.finished and game.stage == 11, "ten-stage victory")
+ game.audio.stop()
+ game.music.stop()
+ await create_timer(0.2).timeout
  game.free()
+ # Let the audio mixer release its asynchronous playback references.
+ await create_timer(0.1).timeout
  print("ALL %d CHECKS PASSED" % checks)
  quit(0)

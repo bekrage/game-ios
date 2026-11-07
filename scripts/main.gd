@@ -1,5 +1,7 @@
 extends Node2D
 
+const Art = preload("res://scripts/character_art.gd")
+
 const W := 1280.0
 const H := 720.0
 const FLOOR := 610.0
@@ -18,8 +20,6 @@ var keys := {"left":false,"right":false,"jump":false,"fire":false}
 var touch_actions: Dictionary = {}
 var fire_timer := 0.0
 var invuln := 0.0
-var music_clock := 0.0
-var note_index := 0
 var audio: AudioStreamPlayer
 var music: AudioStreamPlayer
 var finished := false
@@ -28,15 +28,26 @@ var muted := false
 var platforms: Array[Rect2] = []
 var keyboard := {"left":false,"right":false,"jump":false,"fire":false}
 var stage_banner := 0.0
-const STAGE_NAMES := ["Fern Hollow", "Mint Steps", "Coral Cave", "Moon Garden", "Amber Ruins", "Crystal Rise", "Cloud Terrace", "Violet Vault", "Lava Lanterns", "Dino Summit"]
+var animation_clock := 0.0
+var particles: Array[Dictionary] = []
+var sound_bank: Dictionary = {}
+const STAGE_NAMES := ["Lantern Lobby", "Moonlit Cellar", "Candy Crypt", "Velvet Attic", "Clockwork Hall", "Crystal Vault", "Ghost Terrace", "Violet Chapel", "Pumpkin Parade", "Midnight Rooftop"]
 const PALETTES := ["15243f", "173b40", "40263f", "242448", "403325", "183c51", "24435a", "35204f", "462a32", "173d37"]
-const NOTES := [392.0, 523.25, 587.33, 523.25, 440.0, 392.0, 329.63, 349.23]
 
 func _ready() -> void:
  audio = AudioStreamPlayer.new()
  add_child(audio)
  music = AudioStreamPlayer.new()
  add_child(music)
+ for sound in ["bubble","jump","capture","pop","hurt","clear","victory","game_over"]:
+  sound_bank[sound] = load("res://assets/audio/" + sound + ".wav")
+ var tune := load("res://assets/audio/garden_loop.wav") as AudioStreamWAV
+ tune.loop_mode = AudioStreamWAV.LOOP_FORWARD
+ tune.loop_begin = 0
+ tune.loop_end = tune.data.size() / 2
+ music.stream = tune
+ music.volume_db = -7.0
+ music.play()
  _load_stage()
 
 func _load_stage() -> void:
@@ -49,32 +60,35 @@ func _load_stage() -> void:
   var x := 260.0 + float(n % 3) * 300.0 + float((stage * 37) % 80)
   var y := 490.0 - float(n / 3) * 120.0
   platforms.append(Rect2(x, y, 200 - stage * 3, 16))
+ particles.clear()
  enemies.clear()
  bubbles.clear()
  player = Vector2(130, FLOOR - 26)
  vel = Vector2.ZERO
  for i in range(2 + stage):
-  enemies.append({"pos":Vector2(570 + (i % 5) * 128, FLOOR - 23 - (i / 5) * 160),"dir":-1 if i % 2 == 0 else 1,"trapped":false,"phase":float(i),"lane":i % (platforms.size() + 1)})
+  enemies.append({"pos":Vector2(570 + (i % 5) * 128, FLOOR - 23 - (i / 5) * 160),"dir":-1 if i % 2 == 0 else 1,"trapped":false,"phase":float(i),"kind":i % 4,"lane":i % (platforms.size() + 1)})
  queue_redraw()
 
 func _physics_process(delta: float) -> void:
  if finished or paused:
   return
+ animation_clock += delta
+ for i in range(particles.size()-1,-1,-1):
+  particles[i]["life"] -= delta
+  particles[i]["pos"] += particles[i]["vel"] * delta
+  particles[i]["vel"].y += 250 * delta
+  if particles[i]["life"] <= 0:
+   particles.remove_at(i)
  stage_banner = maxf(0.0, stage_banner - delta)
  fire_timer = maxf(0.0, fire_timer - delta)
  invuln = maxf(0.0, invuln - delta)
- music_clock -= delta
- if music_clock <= 0:
-  music_clock = 0.27
-  _tone(NOTES[note_index % NOTES.size()], 0.11, 0.08, music)
-  note_index += 1
  var axis := int(keys["right"]) - int(keys["left"])
  vel.x = axis * SPEED
  if axis != 0:
   facing = axis
  if keys["jump"] and _grounded():
   vel.y = JUMP
-  _tone(660, 0.10, 0.20, audio)
+  _sfx("jump")
 
  var old_bottom := player.y + 26
  vel.y += GRAV * delta
@@ -91,7 +105,7 @@ func _physics_process(delta: float) -> void:
  if keys["fire"] and fire_timer <= 0:
   fire_timer = 0.32
   bubbles.append({"pos":player + Vector2(facing * 33, -8),"dir":facing,"life":2.6,"enemy":-1})
-  _tone(880, 0.08, 0.16, audio)
+  _sfx("bubble")
  for i in range(enemies.size()):
   var e := enemies[i]
   if e["trapped"]:
@@ -117,9 +131,12 @@ func _physics_process(delta: float) -> void:
    lives -= 1
    invuln = 1.8
    vel.y = -380
-   _tone(150, 0.35, 0.2, audio)
+   _sfx("hurt")
+   _burst(player, Color("ffc9a3"))
    if lives <= 0:
     finished = true
+    _sfx("game_over")
+    music.stop()
  for bi in range(bubbles.size() - 1, -1, -1):
   var b := bubbles[bi]
   b["life"] -= delta
@@ -132,7 +149,8 @@ func _physics_process(delta: float) -> void:
      b["enemy"] = ei
      enemies[ei]["trapped"] = true
      b["life"] = 3.2
-     _tone(1100, 0.14, 0.15, audio)
+     _sfx("capture")
+     _burst(bp, Color("b9faff"))
      break
   else:
    var ei: int = b["enemy"]
@@ -145,7 +163,8 @@ func _physics_process(delta: float) -> void:
      if int(bubbles[bj]["enemy"]) > ei:
       bubbles[bj]["enemy"] -= 1
     score += 100
-    _tone(1320, 0.15, 0.20, audio)
+    _sfx("pop")
+    _burst(bp, Color("fff1a6"))
     continue
   if b["life"] <= 0 or bp.y < 55 or bp.x < 15 or bp.x > W - 15:
    if int(b["enemy"]) >= 0 and int(b["enemy"]) < enemies.size():
@@ -157,19 +176,23 @@ func _physics_process(delta: float) -> void:
   stage += 1
   if stage > 10:
    finished = true
+   _sfx("victory")
+   music.stop()
   else:
    _load_stage()
+   _sfx("clear")
  queue_redraw()
 
 func _draw() -> void:
  draw_rect(Rect2(0, 0, W, H), Color(PALETTES[mini(stage,10) - 1]))
+ _draw_cavern()
  for i in range(45):
   draw_circle(Vector2(float((i * 233 + 39) % 1280), float((i * 117 + 73) % 490)), 2.0, Color("566f98"))
  draw_rect(Rect2(0, FLOOR, W, 110), Color("366f64"))
  draw_rect(Rect2(0, FLOOR, W, 13), Color("69c69b"))
  for i in range(11):
   draw_rect(Rect2(i * 120 + 15, FLOOR + 40, 70, 8), Color("28584f"))
- _txt(Vector2(25, 50), "BUBBLE DINO", 36, Color("91f6d0"))
+ _txt(Vector2(25, 50), "BUBBLE ZOMBIE", 32, Color("91f6d0"))
  _txt(Vector2(470, 50), "STAGE %02d / 10" % mini(stage, 10), 28, Color.WHITE)
  _txt(Vector2(790, 50), "SCORE %05d" % score, 28, Color.WHITE)
  _txt(Vector2(1080, 50), "LIFE %d" % lives, 28, Color("ffb2aa"))
@@ -183,26 +206,30 @@ func _draw() -> void:
  for e in enemies:
   if e["trapped"]:
    continue
-  var p: Vector2 = e["pos"]
-  draw_circle(p, 23, Color("ff817c"))
-  draw_circle(p + Vector2(-8,-5), 4, Color.WHITE)
-  draw_circle(p + Vector2(8,-5), 4, Color.WHITE)
-  draw_circle(p + Vector2(-8,-5), 2, Color.BLACK)
-  draw_circle(p + Vector2(8,-5), 2, Color.BLACK)
+  var ep: Vector2 = e["pos"]
+  Art.oval(self,ep+Vector2(0,25),Vector2(20,4),Color(0.02,0.04,0.10,0.25))
+  Art.monster(self,ep,int(e.get("kind",int(e["lane"])%4)),int(e["dir"]),animation_clock+float(e["phase"]))
  for b in bubbles:
-  var p: Vector2 = b["pos"]
-  draw_circle(p, 29, Color(0.4,0.9,1.0,0.19))
-  draw_arc(p, 29, 0, TAU, 40, Color("a8f4ff"), 4)
-  draw_circle(p + Vector2(-10,-11), 6, Color(1,1,1,0.5))
-  if int(b["enemy"]) >= 0:
-   draw_circle(p, 16, Color("ff817c"))
- if invuln <= 0 or int(Time.get_ticks_msec() / 100) % 2 == 0:
-  draw_circle(player, 26, Color("5be39a"))
-  draw_circle(player + Vector2(facing * 12, -8), 15, Color("7ef7b1"))
-  draw_circle(player + Vector2(facing * 16, -12), 4, Color.WHITE)
-  draw_circle(player + Vector2(facing * 17, -12), 2, Color.BLACK)
-  draw_circle(player + Vector2(-12, 22), 9, Color("3aaa76"))
-  draw_circle(player + Vector2(12, 22), 9, Color("3aaa76"))
+  var bp: Vector2 = b["pos"]
+  var shimmer := sin(animation_clock*4 + bp.x)*0.08
+  draw_circle(bp,29,Color(0.4,0.9,1.0,0.12+shimmer))
+  draw_arc(bp,29,0,TAU,48,Color("adf0ff"),2.5,true)
+  draw_arc(bp,26,0.3,2.1,18,Color("ffbfe8"),2,true)
+  draw_arc(bp,27,3.1,4.6,18,Color("c9ffe1"),3,true)
+  draw_circle(bp+Vector2(-10,-13),5,Color(1,1,1,0.8))
+  draw_circle(bp+Vector2(-17,-5),2,Color.WHITE)
+  if int(b["enemy"]) >= 0 and int(b["enemy"]) < enemies.size():
+   var caught := enemies[int(b["enemy"])]
+   Art.monster(self,bp,int(caught.get("kind",0)),1,animation_clock,true)
+ Art.oval(self,Vector2(player.x,player.y+27),Vector2(24,4),Color(0.02,0.04,0.1,0.35))
+ if invuln <= 0 or int(animation_clock*10) % 2 == 0:
+  Art.hero(self,player,facing,animation_clock,absf(vel.x)>1,not _grounded(),fire_timer>0.2)
+ for bit in particles:
+  var bp: Vector2 = bit["pos"]
+  var tint: Color = bit["color"]
+  tint.a = clampf(float(bit["life"])*2,0,1)
+  draw_line(bp-Vector2(3,0),bp+Vector2(3,0),tint,2,true)
+  draw_line(bp-Vector2(0,3),bp+Vector2(0,3),tint,2,true)
  _button(Vector2(92, 647), 55, "<", "left")
  _button(Vector2(220, 647), 55, ">", "right")
  _button(Vector2(1010, 647), 55, "JUMP", "jump")
@@ -248,6 +275,8 @@ func _input(event: InputEvent) -> void:
    score = 0
    lives = 3
    finished = false
+   if not muted:
+    music.play()
    _clear_input()
    _load_stage()
    return
@@ -273,6 +302,8 @@ func _input(event: InputEvent) -> void:
    score = 0
    lives = 3
    finished = false
+   if not muted:
+    music.play()
    _clear_input()
    _load_stage()
   _refresh_touch()
@@ -281,27 +312,34 @@ func _refresh_touch() -> void:
  for a in keys.keys():
   keys[a] = keyboard[a] or a in touch_actions.values()
 
-func _tone(hz: float, duration: float, volume: float, target: AudioStreamPlayer) -> void:
- if muted:
+func _sfx(sound: String) -> void:
+ if muted or not sound_bank.has(sound):
   return
- var rate := 22050
- var sample_count := int(duration * rate)
- var pcm := PackedByteArray()
- pcm.resize(sample_count * 2)
- for i in range(sample_count):
-  var env := 1.0 - float(i) / sample_count
-  var v := int(sin(TAU * hz * float(i) / rate) * env * volume * 32767)
-  if v < 0:
-   v += 65536
-  pcm[i * 2] = v & 255
-  pcm[i * 2 + 1] = (v >> 8) & 255
- var wav := AudioStreamWAV.new()
- wav.format = AudioStreamWAV.FORMAT_16_BITS
- wav.mix_rate = rate
- wav.stereo = false
- wav.data = pcm
- target.stream = wav
- target.play()
+ audio.stream = sound_bank[sound]
+ audio.play()
+
+func _burst(pos: Vector2, tint: Color) -> void:
+ for i in range(10):
+  var angle := TAU*i/10.0
+  particles.append({"pos":pos,"vel":Vector2(cos(angle),sin(angle))*125,"life":0.55,"color":tint})
+
+func _draw_cavern() -> void:
+ # Chunky masonry, soft halo windows and hanging lanterns.
+ for row in range(7):
+  for col in range(11):
+   var x := col*128.0 + (64 if row%2 else 0)
+   draw_rect(Rect2(x,row*72.0+110,124,68),Color(0.4,0.55,0.7,0.025))
+ for i in range(6):
+  var p := Vector2(100+i*220,190+int(i%2)*70)
+  Art.oval(self,p,Vector2(56,76),Color(0.12,0.22,0.32,0.35))
+  Art.oval(self,p,Vector2(42,62),Color(0.2,0.4,0.5,0.07))
+  draw_line(p+Vector2(0,-60),p+Vector2(0,60),Color("27394d"),4)
+  draw_line(p+Vector2(-40,0),p+Vector2(40,0),Color("27394d"),4)
+ for side in [45,1235]:
+  draw_line(Vector2(side,105),Vector2(side,240),Color("456174"),3,true)
+  draw_circle(Vector2(side,250),24,Color(1.0,0.75,0.35,0.06))
+  Art.oval(self,Vector2(side,250),Vector2(8,13),Color("ffdb8c"))
+  draw_arc(Vector2(side,250),14,0,TAU,20,Color("638b96"),3,true)
 
 func _grounded() -> bool:
  if absf(player.y + 26 - FLOOR) < 1:
@@ -313,8 +351,8 @@ func _grounded() -> bool:
 
 func _ledge_style() -> StyleBoxFlat:
  var style := StyleBoxFlat.new()
- style.bg_color = Color("386d77")
- style.border_color = Color("91eac0")
+ style.bg_color = Color("52627f")
+ style.border_color = Color("92e9c7")
  style.border_width_top = 4
  style.corner_radius_top_left = 6
  style.corner_radius_top_right = 6
@@ -339,6 +377,9 @@ func _toggle_mute() -> void:
  if muted:
   music.stop()
   audio.stop()
+ elif not finished:
+  music.play()
+  music.stream_paused = paused
  queue_redraw()
 
 func _menu_at(p: Vector2) -> bool:
