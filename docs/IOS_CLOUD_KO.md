@@ -12,8 +12,9 @@
 5. 실행 결과의 BubbleDino-iOS-unsigned 아티팩트를 내려받습니다.
    클라우드 서비스 요금/사용 가능 시간은 계정에 따릅니다.
 
-현재 Linux 환경에서는 이 워크플로를 실제 실행하지 않았습니다.
-템플릿 다운로드, Xcode SDK 호환성, 서명·실기기 실행은 클라우드에서 확인해야 합니다.
+2026-11-07 GitHub macos-15에서 실제 실행하여 게임 테스트 53개, Xcode 내보내기,
+서명 없는 arm64 xcarchive 생성이 통과했습니다. Apple 서명과 실기기 실행은 미검증입니다.
+실행: https://github.com/bekrage/game-ios/actions/runs/42345555646
 Godot 버전을 바꿀 때 workflow의 GODOT_VERSION과 로컬 엔진/템플릿을 함께 맞춥니다.
 
 ## 설치 가능한 IPA / TestFlight

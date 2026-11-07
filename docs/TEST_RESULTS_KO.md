@@ -1,3 +1,25 @@
+# 최신 클라우드 빌드 검증 결과
+검사일: 2026-11-07
+저장소: https://github.com/bekrage/game-ios
+실행: https://github.com/bekrage/game-ios/actions/runs/42345555646
+검증한 코드 커밋: 5a4f939
+
+- GitHub macos-15 / Godot 4.6.3에서 실제 실행 성공.
+- 게임 검사 53/53 통과.
+- Xcode 프로젝트 내보내기 성공.
+- generic/platform=iOS, CODE_SIGNING_ALLOWED=NO 아카이브 성공.
+- 실제 로그에 ** ARCHIVE SUCCEEDED ** 확인.
+- 아티팩트: BubbleDino-iOS-unsigned, 약 129 MB 압축, 보존 기간 7일.
+- 수정: 지원되지 않는 macos-14를 macos-15로 변경,
+  ETC2/ASTC 텍스처 가져오기 활성화, 누락된 불투명 앱 아이콘 추가.
+- Linux OpenGL llvmpipe에서 실제 화면 렌더링 확인 및 1단계/포획/10단계 PNG 캡처.
+  캡처는 장면 상태를 테스트 스크립트로 설정한 실제 렌더링이며 아이폰 캡처는 아닙니다.
+- Apple 서명, TestFlight, 실기기 설치/성능/오디오 청음은 미검증.
+- 빌드는 성공했지만 CFBundleSignature가 4글자를 초과한다는 경고,
+  사용하지 않는 AppIntents 메타데이터 추출 생략 안내가 남아 있습니다.
+- 아래 내용은 최초 Linux 검사 기록이며, macOS 미검증 표기는 위 최신 결과로 대체됩니다.
+
+---
 # 분석 및 테스트 결과
 검사일: 2026-11-07 / Linux / Godot 4.6.3.stable.official.7d41c59c4
 
