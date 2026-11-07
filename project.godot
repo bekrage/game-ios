@@ -1,6 +1,8 @@
 config_version=5
 
 [application]
+config/icon="res://assets/icon.png"
+boot_splash/fullsize=false
 config/name="Bubble Dino Adventure"
 run/main_scene="res://scenes/Main.tscn"
 config/features=PackedStringArray("4.2", "GL Compatibility")
