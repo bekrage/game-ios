@@ -7,7 +7,7 @@
 1. 이 프로젝트 폴더의 내용(project.godot과 .github 포함)을 GitHub 저장소 **루트**에 올립니다.
 2. Actions → Godot iOS Cloud Build → Run workflow.
 3. Apple Team ID와 고유 bundle ID를 입력합니다. 서명 없는 컴파일 확인만 할 때는 기본값 사용 가능.
-4. macos-14 클라우드 러너가 Godot 4.6.3과 같은 버전의 공식 iOS 템플릿을 내려받고,
+4. macos-15 클라우드 러너가 Godot 4.6.3과 같은 버전의 공식 iOS 템플릿을 내려받고,
    테스트 → Xcode 프로젝트 내보내기 → ARM64 서명 없는 xcarchive 생성을 수행합니다.
 5. 실행 결과의 BubbleDino-iOS-unsigned 아티팩트를 내려받습니다.
    클라우드 서비스 요금/사용 가능 시간은 계정에 따릅니다.
