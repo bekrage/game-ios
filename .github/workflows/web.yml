@@ -19,7 +19,7 @@ jobs:
           echo /tmp/godot >> "$GITHUB_PATH"
           curl -fL --retry 3 "https://github.com/godotengine/godot/releases/download/${GODOT_VERSION}-stable/Godot_v${GODOT_VERSION}-stable_export_templates.tpz" -o /tmp/templates.zip
           mkdir -p "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable"
-          unzip -p /tmp/templates.zip templates/web_release.zip > "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable/web_release.zip"
+          unzip -p /tmp/templates.zip templates/web_nothreads_release.zip > "$HOME/.local/share/godot/export_templates/${GODOT_VERSION}.stable/web_nothreads_release.zip"
       - name: Export single-threaded mobile browser game
         run: |
           set -euo pipefail
